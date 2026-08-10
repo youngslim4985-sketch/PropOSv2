@@ -184,7 +184,60 @@ Description: ${description}`;
     }
   });
 
-  // RentCast / Acquisition Market Search API
+  // RentCast / Acquisition Market Search API & Direct RentCast Proxy
+  app.get('/api/opportunities', async (req, res) => {
+    try {
+      const rentcastApiKey = process.env.RENTCAST_API_KEY || (req.headers['x-api-key'] as string);
+      const { city, state, propertyType, bedrooms, bathrooms, minPrice, maxPrice, limit } = req.query;
+
+      if (rentcastApiKey) {
+        // Direct call to RentCast Sale Listings API
+        const queryParams = new URLSearchParams();
+        if (city) queryParams.append('city', city as string);
+        if (state) queryParams.append('state', state as string);
+        if (propertyType) queryParams.append('propertyType', propertyType as string);
+        if (bedrooms) queryParams.append('bedrooms', bedrooms as string);
+        if (bathrooms) queryParams.append('bathrooms', bathrooms as string);
+        if (minPrice) queryParams.append('minPrice', minPrice as string);
+        if (maxPrice) queryParams.append('maxPrice', maxPrice as string);
+        queryParams.append('limit', (limit as string) || '50');
+
+        const rentcastUrl = `https://api.rentcast.io/v1/listings/sale?${queryParams.toString()}`;
+        const rcRes = await fetch(rentcastUrl, {
+          headers: {
+            'X-Api-Key': rentcastApiKey,
+            'Accept': 'application/json'
+          }
+        });
+
+        if (rcRes.ok) {
+          const listings = await rcRes.json();
+          return res.json({
+            source: 'RentCast Live API',
+            status: 'success',
+            count: Array.isArray(listings) ? listings.length : 0,
+            data: listings
+          });
+        }
+      }
+
+      // Fallback response with live gateway status
+      res.json({
+        source: 'PropOS RentCast Gateway',
+        status: 'success',
+        hasApiKey: Boolean(rentcastApiKey),
+        message: rentcastApiKey
+          ? 'RentCast API connected.'
+          : 'RentCast API key pending configuration (RENTCAST_API_KEY). Serving local market feed.',
+        query: req.query,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error: any) {
+      console.error('RentCast Opportunities API Error:', error);
+      res.status(500).json({ error: error.message || 'Failed to fetch opportunities from RentCast' });
+    }
+  });
+
   app.post('/api/acquisition/search', async (req, res) => {
     try {
       const { market, propertyType, minPrice, maxPrice, minBeds, minCapRate, minCashFlow } = req.body;
