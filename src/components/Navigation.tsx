@@ -14,12 +14,16 @@ import {
   ChevronDown,
   Layers,
   Sparkles,
-  Building
+  Building,
+  SlidersHorizontal
 } from 'lucide-react';
 import { store } from '../services/store';
 import { TenantId, UserRole } from '../types';
 
 export type ActiveTab =
+  | 'opp_finder'
+  | 'buy_box'
+  | 'pipeline'
   | 'dashboard'
   | 'properties'
   | 'tenants'
@@ -31,7 +35,11 @@ export type ActiveTab =
   | 'audit'
   | 'governance';
 
+export type PlatformMode = 'acquisition' | 'operations';
+
 interface NavigationProps {
+  platformMode: PlatformMode;
+  setPlatformMode: (mode: PlatformMode) => void;
   activeTab: ActiveTab;
   setActiveTab: (tab: ActiveTab) => void;
   searchTerm: string;
@@ -39,6 +47,8 @@ interface NavigationProps {
 }
 
 export const Navigation: React.FC<NavigationProps> = ({
+  platformMode,
+  setPlatformMode,
   activeTab,
   setActiveTab,
   searchTerm,
@@ -67,7 +77,13 @@ export const Navigation: React.FC<NavigationProps> = ({
     setRoleDropdownOpen(false);
   };
 
-  const tabs: { id: ActiveTab; label: string; icon: React.FC<{ className?: string }> }[] = [
+  const acquisitionTabs: { id: ActiveTab; label: string; icon: React.FC<{ className?: string }> }[] = [
+    { id: 'opp_finder', label: 'Opportunity Finder & Scanner', icon: Search },
+    { id: 'buy_box', label: 'Buy Box Strategies', icon: SlidersHorizontal },
+    { id: 'pipeline', label: 'Acquisition Pipeline Tracker', icon: Layers }
+  ];
+
+  const operationsTabs: { id: ActiveTab; label: string; icon: React.FC<{ className?: string }> }[] = [
     { id: 'dashboard', label: 'Executive Dashboard', icon: LayoutDashboard },
     { id: 'properties', label: 'Properties & Units', icon: Building2 },
     { id: 'tenants', label: 'Tenants & CRM', icon: Users },
@@ -79,6 +95,8 @@ export const Navigation: React.FC<NavigationProps> = ({
     { id: 'audit', label: 'Audit Log & Events', icon: History },
     { id: 'governance', label: 'T&F Governance & ADRs', icon: ShieldCheck }
   ];
+
+  const activeTabsList = platformMode === 'acquisition' ? acquisitionTabs : operationsTabs;
 
   return (
     <header className="bg-slate-900 border-b border-slate-800 text-slate-100 sticky top-0 z-40 shadow-lg">
@@ -222,30 +240,68 @@ export const Navigation: React.FC<NavigationProps> = ({
           </div>
         </div>
 
-        {/* Tab Navigation Menu */}
-        <nav className="flex items-center space-x-1 overflow-x-auto py-2 scrollbar-none">
-          {tabs.map(tab => {
-            const Icon = tab.icon;
-            const isActive = activeTab === tab.id;
-            return (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center space-x-2 px-3 py-2 rounded-lg text-xs font-medium whitespace-nowrap transition-all ${
-                  isActive
-                    ? 'bg-indigo-600 text-white shadow-sm font-semibold'
-                    : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
-                }`}
-              >
-                <Icon className={`w-4 h-4 ${isActive ? 'text-white' : 'text-slate-400'}`} />
-                <span>{tab.label}</span>
-                {tab.id === 'ai' && (
-                  <Sparkles className="w-3 h-3 text-amber-300 animate-pulse ml-0.5" />
-                )}
-              </button>
-            );
-          })}
-        </nav>
+        {/* Platform Mode Switcher & Tab Navigation Menu */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between py-2 border-t border-slate-800/60 gap-2">
+          {/* Mode Switcher Pills */}
+          <div className="flex items-center space-x-1.5 bg-slate-950 p-1 rounded-xl border border-slate-800 shrink-0">
+            <button
+              onClick={() => {
+                setPlatformMode('acquisition');
+                setActiveTab('opp_finder');
+              }}
+              className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                platformMode === 'acquisition'
+                  ? 'bg-emerald-500 text-slate-950 shadow-md'
+                  : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              <Sparkles className="w-3.5 h-3.5" />
+              <span>Acquisition Engine</span>
+            </button>
+
+            <button
+              onClick={() => {
+                setPlatformMode('operations');
+                setActiveTab('dashboard');
+              }}
+              className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                platformMode === 'operations'
+                  ? 'bg-indigo-600 text-white shadow-md'
+                  : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              <Building2 className="w-3.5 h-3.5" />
+              <span>Portfolio Operations</span>
+            </button>
+          </div>
+
+          {/* Tab Navigation Menu */}
+          <nav className="flex items-center space-x-1 overflow-x-auto scrollbar-none py-1">
+            {activeTabsList.map(tab => {
+              const Icon = tab.icon;
+              const isActive = activeTab === tab.id;
+              const activeColorClass =
+                platformMode === 'acquisition'
+                  ? 'bg-emerald-500 text-slate-950 shadow-sm font-bold'
+                  : 'bg-indigo-600 text-white shadow-sm font-semibold';
+
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`flex items-center space-x-2 px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-all ${
+                    isActive
+                      ? activeColorClass
+                      : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
+                  }`}
+                >
+                  <Icon className={`w-3.5 h-3.5 ${isActive ? 'text-current' : 'text-slate-400'}`} />
+                  <span>{tab.label}</span>
+                </button>
+              );
+            })}
+          </nav>
+        </div>
       </div>
     </header>
   );

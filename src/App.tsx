@@ -1,5 +1,9 @@
 import React, { useState } from 'react';
-import { Navigation, ActiveTab } from './components/Navigation';
+import { Navigation, ActiveTab, PlatformMode } from './components/Navigation';
+import { OpportunityFinderView } from './components/OpportunityFinderView';
+import { DealUnderwriterView } from './components/DealUnderwriterView';
+import { BuyBoxManagerView } from './components/BuyBoxManagerView';
+import { AcquisitionPipelineView } from './components/AcquisitionPipelineView';
 import { DashboardView } from './components/DashboardView';
 import { PropertiesView } from './components/PropertiesView';
 import { TenantsCrmView } from './components/TenantsCrmView';
@@ -11,10 +15,14 @@ import { AiOpsView } from './components/AiOpsView';
 import { AuditEventsView } from './components/AuditEventsView';
 import { GovernanceView } from './components/GovernanceView';
 import { Modals } from './components/Modals';
+import { AcquisitionOpportunity } from './types';
+import { store } from './services/store';
 
 export const App: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<ActiveTab>('dashboard');
+  const [platformMode, setPlatformMode] = useState<PlatformMode>('acquisition');
+  const [activeTab, setActiveTab] = useState<ActiveTab>('opp_finder');
   const [searchTerm, setSearchTerm] = useState('');
+  const [selectedOpportunity, setSelectedOpportunity] = useState<AcquisitionOpportunity | null>(null);
 
   // Modal visibility states
   const [showNewPropertyModal, setShowNewPropertyModal] = useState(false);
@@ -25,74 +33,123 @@ export const App: React.FC = () => {
   const [showUploadDocModal, setShowUploadDocModal] = useState(false);
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans selection:bg-indigo-500 selection:text-white">
+    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans selection:bg-emerald-500 selection:text-slate-950">
       {/* Top Navbar */}
       <Navigation
+        platformMode={platformMode}
+        setPlatformMode={m => {
+          setPlatformMode(m);
+          setSelectedOpportunity(null);
+        }}
         activeTab={activeTab}
-        setActiveTab={setActiveTab}
+        setActiveTab={t => {
+          setActiveTab(t);
+          setSelectedOpportunity(null);
+        }}
         searchTerm={searchTerm}
         setSearchTerm={setSearchTerm}
       />
 
       {/* Main View Container */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        {activeTab === 'dashboard' && (
-          <DashboardView
-            setActiveTab={setActiveTab}
-            onOpenNewPropertyModal={() => setShowNewPropertyModal(true)}
-            onOpenNewLeaseModal={() => setShowNewLeaseModal(true)}
-            onOpenNewPaymentModal={() => setShowNewPaymentModal(true)}
-            onOpenNewTicketModal={() => setShowNewTicketModal(true)}
-          />
+        {/* ACQUISITION ENGINE VIEWS */}
+        {platformMode === 'acquisition' && (
+          <>
+            {selectedOpportunity ? (
+              <DealUnderwriterView
+                opportunity={selectedOpportunity}
+                onBack={() => setSelectedOpportunity(null)}
+              />
+            ) : (
+              <>
+                {activeTab === 'opp_finder' && (
+                  <OpportunityFinderView
+                    onSelectOpportunityForUnderwriting={opp => setSelectedOpportunity(opp)}
+                    onNavigateToBuyBox={() => setActiveTab('buy_box')}
+                  />
+                )}
+
+                {activeTab === 'buy_box' && (
+                  <BuyBoxManagerView
+                    onRunScanForBuyBox={boxId => {
+                      store.runMarketScan(boxId);
+                      setActiveTab('opp_finder');
+                    }}
+                  />
+                )}
+
+                {activeTab === 'pipeline' && (
+                  <AcquisitionPipelineView
+                    onSelectOpportunityForUnderwriting={opp => setSelectedOpportunity(opp)}
+                  />
+                )}
+              </>
+            )}
+          </>
         )}
 
-        {activeTab === 'properties' && (
-          <PropertiesView
-            onOpenNewPropertyModal={() => setShowNewPropertyModal(true)}
-            searchTerm={searchTerm}
-          />
+        {/* PORTFOLIO OPERATIONS VIEWS */}
+        {platformMode === 'operations' && (
+          <>
+            {activeTab === 'dashboard' && (
+              <DashboardView
+                setActiveTab={setActiveTab}
+                onOpenNewPropertyModal={() => setShowNewPropertyModal(true)}
+                onOpenNewLeaseModal={() => setShowNewLeaseModal(true)}
+                onOpenNewPaymentModal={() => setShowNewPaymentModal(true)}
+                onOpenNewTicketModal={() => setShowNewTicketModal(true)}
+              />
+            )}
+
+            {activeTab === 'properties' && (
+              <PropertiesView
+                onOpenNewPropertyModal={() => setShowNewPropertyModal(true)}
+                searchTerm={searchTerm}
+              />
+            )}
+
+            {activeTab === 'tenants' && (
+              <TenantsCrmView
+                onOpenNewTenantModal={() => setShowNewTenantModal(true)}
+                searchTerm={searchTerm}
+              />
+            )}
+
+            {activeTab === 'leases' && (
+              <LeasesView
+                onOpenNewLeaseModal={() => setShowNewLeaseModal(true)}
+                searchTerm={searchTerm}
+              />
+            )}
+
+            {activeTab === 'financials' && (
+              <AccountingView
+                onOpenNewPaymentModal={() => setShowNewPaymentModal(true)}
+                searchTerm={searchTerm}
+              />
+            )}
+
+            {activeTab === 'workflows' && (
+              <WorkflowsView
+                onOpenNewTicketModal={() => setShowNewTicketModal(true)}
+                searchTerm={searchTerm}
+              />
+            )}
+
+            {activeTab === 'documents' && (
+              <DocumentsView
+                onOpenUploadDocModal={() => setShowUploadDocModal(true)}
+                searchTerm={searchTerm}
+              />
+            )}
+
+            {activeTab === 'ai' && <AiOpsView />}
+
+            {activeTab === 'audit' && <AuditEventsView searchTerm={searchTerm} />}
+
+            {activeTab === 'governance' && <GovernanceView />}
+          </>
         )}
-
-        {activeTab === 'tenants' && (
-          <TenantsCrmView
-            onOpenNewTenantModal={() => setShowNewTenantModal(true)}
-            searchTerm={searchTerm}
-          />
-        )}
-
-        {activeTab === 'leases' && (
-          <LeasesView
-            onOpenNewLeaseModal={() => setShowNewLeaseModal(true)}
-            searchTerm={searchTerm}
-          />
-        )}
-
-        {activeTab === 'financials' && (
-          <AccountingView
-            onOpenNewPaymentModal={() => setShowNewPaymentModal(true)}
-            searchTerm={searchTerm}
-          />
-        )}
-
-        {activeTab === 'workflows' && (
-          <WorkflowsView
-            onOpenNewTicketModal={() => setShowNewTicketModal(true)}
-            searchTerm={searchTerm}
-          />
-        )}
-
-        {activeTab === 'documents' && (
-          <DocumentsView
-            onOpenUploadDocModal={() => setShowUploadDocModal(true)}
-            searchTerm={searchTerm}
-          />
-        )}
-
-        {activeTab === 'ai' && <AiOpsView />}
-
-        {activeTab === 'audit' && <AuditEventsView searchTerm={searchTerm} />}
-
-        {activeTab === 'governance' && <GovernanceView />}
       </main>
 
       {/* Global Modals */}
@@ -115,16 +172,19 @@ export const App: React.FC = () => {
       <footer className="border-t border-slate-800/80 bg-slate-900/60 py-4 mt-8">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between text-xs text-slate-500 gap-2 font-mono">
           <div>
-            PropOS-v2 • Multi-Tenant Property Operations Platform • T&F Standard Compliant
+            PropOS-v2 • Real Estate Acquisition Intelligence & Operations Platform • RentCast Live Data Integrated
           </div>
           <div className="flex items-center space-x-4">
             <span>Server: Express + Gemini 3.6 Flash</span>
-            <span>RLS Active</span>
+            <span>RentCast API Connected</span>
             <button
-              onClick={() => setActiveTab('governance')}
-              className="text-indigo-400 hover:text-indigo-300 font-bold"
+              onClick={() => {
+                setPlatformMode('operations');
+                setActiveTab('governance');
+              }}
+              className="text-emerald-400 hover:text-emerald-300 font-bold"
             >
-              tf-standard-kit Specs
+              T&F Governance Specs
             </button>
           </div>
         </div>

@@ -191,7 +191,7 @@ export interface PropertyDocument {
 
 export interface DomainEvent {
   event_id: string;
-  event_type: 'PropertyCreated' | 'UnitUpdated' | 'TenantOnboarded' | 'LeaseSigned' | 'PaymentReceived' | 'WorkOrderCreated' | 'WorkOrderUpdated' | 'DocumentUploaded' | 'AIOperationExecuted';
+  event_type: 'PropertyCreated' | 'UnitUpdated' | 'TenantOnboarded' | 'LeaseSigned' | 'PaymentReceived' | 'WorkOrderCreated' | 'WorkOrderUpdated' | 'DocumentUploaded' | 'AIOperationExecuted' | 'OpportunityDiscovered' | 'OpportunityScored' | 'BuyBoxUpdated' | 'OfferGenerated' | 'PropertyAcquiredFromPipeline';
   aggregate_id: string;
   tenant_id: TenantId;
   occurred_at: string;
@@ -200,6 +200,115 @@ export interface DomainEvent {
   correlation_id: string;
   schema_version: number;
   payload: Record<string, any>;
+}
+
+export type AcquisitionPropertyType = 'single_family' | 'duplex' | 'triplex' | 'fourplex' | 'commercial' | 'multi_family';
+export type OpportunityClassification = '🔥 Exceptional' | '🟢 Strong Buy Candidate' | '🟡 Investigate' | '🟠 Weak' | '🔴 Pass';
+export type OpportunityRecommendation = 'BUY' | 'INVESTIGATE' | 'PASS';
+export type PipelineStage = 'New Discovered' | 'Under Review' | 'Offer Sent' | 'Under Contract' | 'Acquired' | 'Passed';
+
+export interface BuyBoxStrategy {
+  id: string;
+  tenantOrgId: TenantId;
+  name: string;
+  isActive: boolean;
+  markets: string[];
+  propertyTypes: AcquisitionPropertyType[];
+  priceMin: number;
+  priceMax: number;
+  bedroomsMin: number;
+  bathroomsMin: number;
+  minCapRate: number;
+  minCashFlow: number;
+  minCashOnCash: number;
+  maxPriceToRentRatio: number;
+  minOpportunityScore: number;
+  financing: {
+    downPaymentPercent: number;
+    interestRate: number;
+    loanTermYears: number;
+    closingCostPercent: number;
+    defaultRehabCost: number;
+    vacancyRatePercent: number;
+    managementFeePercent: number;
+  };
+  createdAt: string;
+}
+
+export interface OpportunityScore {
+  priceDiscount: number; // max 20
+  cashFlow: number; // max 20
+  capRate: number; // max 20
+  rentPotential: number; // max 15
+  marketStrength: number; // max 10
+  propertyCondition: number; // max 10
+  daysOnMarket: number; // max 5
+  totalScore: number; // 0-100
+  classification: OpportunityClassification;
+  recommendation: OpportunityRecommendation;
+}
+
+export interface AcquisitionOpportunity {
+  id: string;
+  tenantOrgId: TenantId;
+  address: string;
+  city: string;
+  state: string;
+  zip: string;
+  market: string;
+  propertyType: AcquisitionPropertyType;
+  bedrooms: number;
+  bathrooms: number;
+  sqft: number;
+  yearBuilt: number;
+  daysOnMarket: number;
+  status: 'Active' | 'Pending' | 'Price Drop' | 'Under Offer';
+  isNewOpportunity: boolean;
+  discoveredAt: string;
+  imageUrl: string;
+  listingUrl?: string;
+  source: 'RentCast' | 'ATTOM' | 'Public Records' | 'MLS Feed';
+  listPrice: number;
+  estimatedValue: number; // ARV / Market Valuation
+  estimatedRent: number;
+  priceDiscountAmount: number;
+  priceDiscountPercent: number;
+  financials: {
+    grossRentAnnual: number;
+    estimatedExpensesAnnual: number;
+    noi: number;
+    capRate: number;
+    monthlyDebtService: number;
+    monthlyCashFlow: number;
+    cashOnCash: number;
+    equityRequired: number;
+    priceToRentRatio: number;
+    dscr: number;
+  };
+  underwritingInputs?: {
+    customPrice?: number;
+    customRent?: number;
+    rehabCost?: number;
+    downPaymentPercent?: number;
+    interestRate?: number;
+    loanTermYears?: number;
+  };
+  opportunityScore: OpportunityScore;
+  aiAnalysis: {
+    reasonsToBuy: string[];
+    warnings: string[];
+    summary: string;
+    comparables: {
+      address: string;
+      price: number;
+      rent: number;
+      sqft: number;
+      distanceMiles: number;
+    }[];
+  };
+  isSaved: boolean;
+  pipelineStage: PipelineStage;
+  userNotes?: string;
 }
 
 export interface AiChatMessage {
